@@ -197,8 +197,12 @@ function draw(){
   document.querySelectorAll("[data-sc]").forEach(x=>x.scrollLeft=sc[x.dataset.sc]||0);window.scrollTo(0,sy);undoUi();syState();
 }
 function tpinUi(i){const on=!!tabPin(i);return `<details style="margin:6px 0 10px"><summary>PIN <span class="msg">${on?"açık":"kapalı"}</span></summary><div class="row"><input data-tpin="${i}" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="4-8 rakam"><button class="sec" data-pc="tset" data-i="${i}">${on?"Değiştir":"Belirle"}</button>${on?`<button class="sec" data-pc="tof" data-i="${i}">Kaldır</button>`:""}</div></details>`}
+let openOL=null;
+const olSet=t=>{const tb=/^\d+$/.test(String(t))?app.tabs[+t]:null;return tb&&(tb.ol||[]).length?new Set(tb.ol):null};
+function olParse(txt){const ok=[],bad=[];String(txt||"").split(/[\s,;]+/).forEach(x=>{if(!x)return;if(/^\d{1,9}$/.test(x))ok.push(x.padStart(9,"0"));else bad.push(x)});return{ok,bad}}
+function olUi(i){const n=(app.tabs[i].ol||[]).length;return `<details ${openOL===i?"open":""} style="margin:6px 0 10px"><summary>Onaylı barkod listesi <span class="msg">${n?n+" barkod":"boş"}</span></summary><textarea data-ol="${i}" rows="4" placeholder="Yönetici listesini buraya yapıştır (alt alta veya boşlukla)" style="width:100%"></textarea><div class="row"><button class="sec" data-pc="olad" data-i="${i}">Listeye ekle</button>${n?`<button class="sec" data-pc="olcl" data-i="${i}">Listeyi temizle</button>`:""}</div><div class="msg">Liste doluysa bu sekmede sadece listedeki barkodlar kaydedilir, olmayan kırmızı çıkar ve kaydedilmez.</div></details>`}
 function ctl(){
-  $("view").innerHTML=`<div class="card"><b>Sekmeler</b>${app.tabs.length?app.tabs.map((t,i)=>`<div class="row"><input data-tn="${i}" value="${esc(t.n)}"><button class="sec" data-c="up" data-i="${i}">↑</button><button class="sec" data-c="dn" data-i="${i}">↓</button><button class="sec" data-c="del" data-i="${i}">Sil</button></div><div class="row" style="margin-top:2px"><label><input type="checkbox" data-nb="${i}" ${t.nb?"checked":""}> Barkodsuz sekme (bu sekmede barkod okutulmaz)</label></div><div class="row" style="margin-top:2px"><label><input type="checkbox" data-dt="${i}" ${t.dt?"checked":""}> Sekmede bugünün tarihini otomatik göster</label></div>${tree(i,"b")}${tree(i)}${tpinUi(i)}`).join(""):'<div class="msg">Henüz sekme yok.</div>'}<div class="row"><button data-c="add">+ Sekme ekle</button></div></div>
+  $("view").innerHTML=`<div class="card"><b>Sekmeler</b>${app.tabs.length?app.tabs.map((t,i)=>`<div class="row"><input data-tn="${i}" value="${esc(t.n)}"><button class="sec" data-c="up" data-i="${i}">↑</button><button class="sec" data-c="dn" data-i="${i}">↓</button><button class="sec" data-c="del" data-i="${i}">Sil</button></div><div class="row" style="margin-top:2px"><label><input type="checkbox" data-nb="${i}" ${t.nb?"checked":""}> Barkodsuz sekme (bu sekmede barkod okutulmaz)</label></div><div class="row" style="margin-top:2px"><label><input type="checkbox" data-dt="${i}" ${t.dt?"checked":""}> Sekmede bugünün tarihini otomatik göster</label></div>${olUi(i)}${tree(i,"b")}${tree(i)}${tpinUi(i)}`).join(""):'<div class="msg">Henüz sekme yok.</div>'}<div class="row"><button data-c="add">+ Sekme ekle</button></div></div>
 ${kyCard()}${kgCard()}<div class="card"><details><summary>Bağlantı ayarları</summary><label class="lb">Senkron adresi (Google Apps Script web uygulaması)</label><input type="text" style="width:100%" data-dv="url" value="${esc(dev.url)}"><label class="lb">Anahtar</label><input type="text" style="width:100%" data-dv="key" value="${esc(dev.key)}"><label class="lb">Bu cihazın adı</label><input type="text" style="width:100%" data-dv="dev" value="${esc(dev.dev)}"><div class="row"><button class="sec" data-pc="syn">Şimdi eşitle</button><button class="sec" data-pc="rst">Sunucudan geri yükle</button></div><div class="msg">Adres girilince kayıtlar her değişiklikte otomatik gönderilir (PIN'ler gönderilmez). Çevrimdışıysa sonra tekrar dener.</div></details></div>${bkCard()}${pinCard()}`;
 }
 /* ----- seçimler ----- */
@@ -351,7 +355,7 @@ function pick(i){
       const gx=(pre,k,def,tt,l2,mu)=>{if(!(l2||[]).length&&!o[pre+"w"])return"";let g=lb(tt==null?def:tt);if(o[pre+"w"]){const m=o[pre+"l"]&&!o[pre+"r"]?"l":o[pre+"r"]&&!o[pre+"l"]?"r":"";g+=`<input data-v="${q}~${pre}" data-m="${m}" ${m==="r"?'inputmode="numeric"':""} placeholder="${esc(o[pre+"h"])}" value="${esc(vals[NS+"/"+q+"~"+pre]||"")}" style="width:100%;margin-top:8px">`}if((l2||[]).length)g+=lv(l2,q,k,mu,rt);return g};
       h+=gx("a","c","Alt seçimler",o.at,o.c,!!o.am)+gx("y","y","Yan seçimler",o.yt,o.y,!!o.ym)});
     return h};
-  return `<div class="card"><b>${esc(t.n)}</b>${!cur?(t.nb?'<div class="msg">Barkodsuz sekme: barkod okutulmaz, kayıt barkodsuz alınır.</div>':'<div class="msg warn">Diğer butonlar ve seçimler için barkod okut.</div>'):""}${cur&&skipOf(cur)?'<div class="msg warn">⚠ Bu barkodun "'+esc(skipOf(cur))+'" sekmesinde kaydı yok (aşama atlanmış olabilir). İstersen yine de kaydedebilirsin.</div>':""}${carry(t.n)}${t.dt?'<div class="msg">📅 Tarih: <b>'+new Date().toLocaleDateString("tr-TR")+'</b></div>':""}${bl.length?lb(t.bt==null?"Butonlar":t.bt)+lv(bl,"","c",false,"b"):""}${bTop&&bTop.s?'<div class="msg">Bu buton seçiliyken diğer seçimleri doldurmadan kaydedebilirsin.</div>':""}${(t.o||[]).length&&(!bl.length||bTop)&&(cur||t.nb)?lb(t.ot==null?"Seçimler":t.ot)+lv(t.o,"","c",!!t.om):""}<div class="row"><button data-c="ks">Kaydet</button><button class="sec" data-c="kc">Vazgeç</button></div></div>`;
+  return `<div class="card"><b>${esc(t.n)}</b>${!cur?(t.nb?'<div class="msg">Barkodsuz sekme: barkod okutulmaz, kayıt barkodsuz alınır.</div>':'<div class="msg warn">Diğer butonlar ve seçimler için barkod okut.</div>'):""}${cur&&skipOf(cur)?'<div class="msg warn">⚠ Bu barkodun "'+esc(skipOf(cur))+'" sekmesinde kaydı yok (aşama atlanmış olabilir). İstersen yine de kaydedebilirsin.</div>':""}${cur&&olSet(i)?(olSet(i).has(cur)?'<div class="msg" style="background:#1e8e3e;color:#fff;padding:8px 10px;border-radius:8px;font-weight:700">✔ Onaylı listede: '+esc(cur)+'</div>':'<div class="msg" style="background:#c0392b;color:#fff;padding:8px 10px;border-radius:8px;font-weight:700">✖ Onaylı listede yok. Kaydedilemez.</div>'):""}${carry(t.n)}${t.dt?'<div class="msg">📅 Tarih: <b>'+new Date().toLocaleDateString("tr-TR")+'</b></div>':""}${bl.length?lb(t.bt==null?"Butonlar":t.bt)+lv(bl,"","c",false,"b"):""}${bTop&&bTop.s?'<div class="msg">Bu buton seçiliyken diğer seçimleri doldurmadan kaydedebilirsin.</div>':""}${(t.o||[]).length&&(!bl.length||bTop)&&(cur||t.nb)?lb(t.ot==null?"Seçimler":t.ot)+lv(t.o,"","c",!!t.om):""}<div class="row"><button data-c="ks">Kaydet</button><button class="sec" data-c="kc">Vazgeç</button></div></div>`;
 }
 $("view").oninput=e=>{const t=e.target,D=t.dataset;if(D.ed){if(!draft)return;const[f,j]=D.ed.split("|");if(f==="kod"){const v=t.value.replace(/\D/g,"");t.value=v;draft.kod=v}else if(f==="statu")draft.statu=t.value;else if(f==="n")draft.sec[+j].n=t.value;else if(f==="v")draft.sec[+j].v=t.value;return}
   if(D.wd){waitD=Math.max(1,Math.floor(+t.value)||1);LS("wd",waitD);$("wl").innerHTML=waitList();return}
@@ -402,6 +406,7 @@ $("view").onclick=e=>{
     if(app.tabs[+T].nb)cur="";
     if(!cur&&!app.tabs[+T].nb){say("Önce barkod okut.",1);return}
     const d0=cur?dup(cur,app.tabs[+T].n):null;if(d0){say(dupMsg(d0),1);return}
+    const OLs=olSet(T);if(cur&&OLs&&!OLs.has(cur)){say("Onaylı listede yok, kaydedilemez.",1);return}
     let ok=true,NW=T;const out=[],FL=[],walk=(l,p,k,op,g)=>{if(!(l||[]).length)return;const S=sel[NW+"/"+p+"/"+k]||[];if(!S.length){if(!op)ok=false;return}S.forEach(x=>{const o=l[x];if(!o)return;if(o.ik)FL.push(o.n);const q=(p?p+".":"")+k+x,r={n:o.n,g};if(o.cf||o.wcf)r.p=1;if(o.w){r.v=vals[NW+"/"+q]||"";if(!r.v.trim())ok=false}out.push(r);
       const gt=(pre,title,op)=>{if(o[pre+"w"]){const v=(vals[NW+"/"+q+"~"+pre]||"").trim();if(v)out.push(Object.assign({n:title,v,g:title},o[pre+"cf"]?{p:1}:{}));else if(!op)ok=false}};
       gt("a",o.at==null?"Alt seçimler":o.at,!!o.ao);gt("y",o.yt==null?"Yan seçimler":o.yt,!!o.yo);
@@ -414,7 +419,7 @@ $("view").onclick=e=>{
       walk(st.c,q0,"c",!!st.ao,st.at==null?"Alt seçimler":st.at);walk(st.y,q0,"y",!!st.yo,st.yt==null?"Yan seçimler":st.yt)}
     if(app.tabs[+T].dt)out.push({n:"Tarih",v:new Date().toLocaleDateString("tr-TR"),g:"Tarih"});
     if(!ok&&!(st&&st.s)){say("Tüm sorular cevaplanmadan kaydedilemez.");return}
-    lastDel=null;(app.rec||(app.rec=[])).push({id:nid(),t:new Date().toISOString(),sekme:app.tabs[+T].n,kod:cur,statu:st?st.n:"",sec:out,...(FL.length&&cur?{ob:FL}:{}),...(cur?{}:{nb:1})});
+    lastDel=null;(app.rec||(app.rec=[])).push({id:nid(),t:new Date().toISOString(),sekme:app.tabs[+T].n,kod:cur,statu:st?st.n:"",sec:out,...(FL.length&&cur?{ob:FL}:{}),...(OLs&&cur?{ol:1}:{}),...(cur?{}:{nb:1})});
     save();sel={};vals={};bsel={};col.clear();dinit.clear();cur="";$("code").value="";draw();say("Kaydedildi.");return}
   if(!b||!b.dataset.c)return;const D=b.dataset,I=D.i,i=TI(D.i),a=app.tabs;sel={};vals={};bsel={};col.clear();dinit.clear();
   if(D.c[0]==="b"){
@@ -465,6 +470,8 @@ $("view").addEventListener("click",async e=>{
   if(c==="rsub"){rsub=b.dataset.k||"";bubIdx=null;editIdx=null;draft=null;draw();return}
   if(c==="wh"){whSel=whSel===b.dataset.n?null:b.dataset.n;draw();return}
   if(c==="gob"){recQ=b.dataset.k;draw();const e2=$("rl");if(e2)e2.scrollIntoView();return}
+  if(c==="olad"){const i=+b.dataset.i,ta=$("view").querySelector('textarea[data-ol="'+i+'"]'),r=olParse(ta?ta.value:"");if(!r.ok.length){say(r.bad.length?"Geçerli barkod yok (harfli veya 9 haneden uzun).":"Liste boş.",1);return}const tb=app.tabs[i],S=new Set(tb.ol||[]),n0=S.size;r.ok.forEach(x=>S.add(x));tb.ol=[...S];openOL=i;save();draw();say((S.size-n0)+" yeni barkod eklendi (toplam "+S.size+")"+(r.bad.length?", "+r.bad.length+" atlandı (harfli/9 haneden uzun)":"")+".");return}
+  if(c==="olcl"){const i=+b.dataset.i;if(!confirm("Onaylı barkod listesi tamamen silinsin mi?"))return;delete app.tabs[i].ol;openOL=i;save();draw();say("Liste temizlendi.");return}
   if(c==="syn"){if(!dev.url){say("Önce senkron adresini gir.",1);return}LS("sd",1);say("Eşitleniyor…");await push();say(sdirty()?"Eşitlenemedi, tekrar denenecek.":"Eşitlendi.",sdirty());return}
   if(c==="rst")return pull();
   if(c==="csv")return csvOut();
@@ -556,8 +563,8 @@ function commit(c){
   if(T==="R"){recQ=c;$("code").value=c;draw();closeKb();const n=(app.rec||[]).filter(x=>String(x.kod).includes(c)).length;beep(1000);say(n?"Arama: "+c+" — "+n+" kayıt":"Arama: "+c+" — kayıt yok",!n);return}
   if(T!=="K"&&app.tabs[+T]&&app.tabs[+T].nb){reject("Bu sekme barkodsuz: barkod okutulamaz.");return}
   if(T!=="K"){const d=dup(c,app.tabs[+T].n);if(d){reject(dupMsg(d));return}}
-  cur=c;$("code").value=c;ui();closeKb();const sk=skipOf(c);beep(sk?650:z?500:1000);if(navigator.vibrate)try{navigator.vibrate(sk?[120,80,120,80,120]:z?[100,60,100]:60)}catch(x){}
-  say(sk?"⚠ Uyarı: \""+sk+"\" kaydı yok, aşama atlanmış olabilir. Yine de kaydedebilirsin. ("+c+")":z?"Barkod kısa, başına sıfır eklendi: "+c:"Okundu: "+c,z||!!sk);
+  cur=c;$("code").value=c;ui();closeKb();const sk=skipOf(c),OL=olSet(T),olRed=!!OL&&!OL.has(c);beep(olRed?300:sk?650:z?500:1000);if(navigator.vibrate)try{navigator.vibrate(olRed?[400]:sk?[120,80,120,80,120]:z?[100,60,100]:60)}catch(x){}
+  say((OL?(olRed?"✖ Onaylı listede yok, kaydedilemez. ":"✔ Onaylı. "):"")+(sk?"⚠ Uyarı: \""+sk+"\" kaydı yok, aşama atlanmış olabilir. Yine de kaydedebilirsin. ("+c+")":z?"Barkod kısa, başına sıfır eklendi: "+c:"Okundu: "+c),z||!!sk||olRed);
 }
 function found(c){$("code").value=c;letters=false;commit(c);stop()}
 function stop(){
